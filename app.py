@@ -9,11 +9,12 @@ def get_working_gemini_model():
 
     # 1) 우선 흔히 쓰는 후보들부터 시도
     candidates = [
-        "gemini-1.5-flash",
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-pro",
-        "gemini-1.5-pro-latest",
-        "gemini-pro",  # 구버전 호환용
+        "models/gemini-2.0-flash-lite",
+        "models/gemini-2.0-flash-lite-001",
+        "models/gemini-2.0-flash",
+        "models/gemini-2.0-flash-001",
+        "models/gemini-2.5-flash",
+        "models/gemini-2.5-pro",
     ]
 
     for name in candidates:
