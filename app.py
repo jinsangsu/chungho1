@@ -9,7 +9,7 @@ GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-@st.cache_resource
+#@st.cache_resource
 def get_gs_client():
     # Streamlit Cloud의 Secrets 설정을 그대로 사용
     creds = Credentials.from_service_account_info(
@@ -19,13 +19,26 @@ def get_gs_client():
     return gspread.authorize(creds)
 
 def fetch_data(sheet_name):
+    # 1. URL이 비어있지 않은지 다시 한번 하드코딩 확인
+    target_url = "https://docs.google.com/spreadsheets/d/1C2tEZ1tGgbhfLw5LsUWrzttByD-zt_CZobg-FVTKyWo/edit"
+    
     try:
+        if not target_url:
+            st.error("구글 시트 URL 주소를 확인해주세요.")
+            return []
+            
         client = get_gs_client()
-        # 통합 데이터베이스 파일명을 '충호본부데이터베이스'로 설정했습니다.
-        sh = client.open("충호본부데이터베이스") 
+        sh = client.open_by_url(target_url)
+        
+        # 2. 탭 이름을 유연하게 처리 (시트에 '사원명부'가 있는지 확인)
+        worksheet_list = [w.title for w in sh.worksheets()]
+        if sheet_name not in worksheet_list:
+            st.error(f"'{sheet_name}' 탭을 찾을 수 없습니다. 현재 탭 목록: {worksheet_list}")
+            return []
+            
         return sh.worksheet(sheet_name).get_all_records()
     except Exception as e:
-        st.error(f"'{sheet_name}' 데이터를 불러오는 중 오류 발생: {e}")
+        st.error(f"연동 오류 발생: {e}")
         return []
 
 # --- 2. 로그인 화면 ---
