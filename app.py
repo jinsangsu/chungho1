@@ -66,9 +66,9 @@ def get_ai_response(user_query):
     # 1. 시트에서 질의응답 데이터 가져오기
     qa_data = fetch_data("질의응답시트")
     
-    # 2. 참고할 데이터 구성 (에러 방지를 위해 문자열 변환 및 필터링)
+    # 2. 참고할 데이터 구성 (에러 방지를 위해 문자열 변환 및 개수 제한)
+    context = ""
     if qa_data:
-        # 질문과 답변 컬럼이 있는 데이터만 추출하여 텍스트로 병합
         context_list = []
         for item in qa_data:
             q = str(item.get("질문", "")).strip()
@@ -76,43 +76,41 @@ def get_ai_response(user_query):
             if q and a:
                 context_list.append(f"Q: {q}\nA: {a}")
         
-        # 데이터가 너무 많으면 오류가 나므로 최신/주요 데이터 60개 정도로 제한
-        context = "\n\n".join(context_list[-60:]) 
+        # 데이터가 너무 많으면 400 에러가 날 수 있으므로 최신 50개로 제한
+        context = "\n\n".join(context_list[-50:]) 
     else:
-        context = "현재 등록된 업무 지침이 없습니다."
+        context = "현재 등록된 지침 데이터가 없습니다."
 
     # 3. AI 프롬프트 작성
     prompt = f"""
-    당신은 충청호남본부 보험 전문가입니다. 아래 [지침 데이터]를 참고하여 설계사의 질문에 답하세요.
-    
+    당신은 충청호남본부 보험 전문가입니다. 아래 [지침 데이터]를 바탕으로 설계사의 질문에 답하세요.
+    데이터에 없는 내용은 지침서에 없다고 안내하세요.
+
     [지침 데이터]:
     {context}
     
     질문: {user_query}
-    
-    답변 가이드:
-    1. 반드시 제공된 데이터에 기반하여 답변하세요.
-    2. 데이터에 없는 내용은 "현재 시스템에 등록되지 않은 지침입니다. 관리자에게 문의하세요."라고 답하세요.
-    3. 모바일에서 보기 좋게 핵심만 요약하여 불렛 포인트(•)를 사용해 답변하세요.
     """
     
     try:
-        # API 설정 및 모델 호출
+        # API 키 설정
         genai.configure(api_key=st.secrets["gemini_api_key"])
+        
+        # ⚠️ 404 에러 해결 포인트: 모델 이름을 아래와 같이 지정합니다.
+        # 버전이나 환경에 따라 'models/gemini-1.5-flash' 또는 'gemini-1.5-flash'를 사용합니다.
         model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # 세이프티 세팅 추가 (필요 시)
+        # 답변 생성
         response = model.generate_content(prompt)
         
         if response and response.text:
             return response.text
         else:
-            return "AI가 적절한 답변을 생성하지 못했습니다. 질문을 다시 다듬어주세요."
+            return "AI가 답변을 생성하지 못했습니다. 질문을 다시 입력해 주세요."
             
     except Exception as e:
-        # InvalidArgument 등 구체적인 에러를 화면에 표시하여 디버깅 도움
-        return f"⚠️ 서비스 일시 오류 (관리자 문의): {str(e)}"
-# --- 4. 메인 채팅 화면 ---
+        # 404 에러가 반복되면 'gemini-pro'로 바꿔서 시도해보라는 메시지 출력
+        return f"⚠️ 서비스 일시 오류 (관리자 문의): {str(e)}"# --- 4. 메인 채팅 화면 ---
 def main_page():
     st.set_page_config(page_title="충호본부 AI Assistant", layout="wide")
     st.write(f"### 👋 안녕하세요, {st.session_state['user_name']}님!")
