@@ -66,7 +66,7 @@ def get_ai_response(user_query):
     # 1. 시트에서 질의응답 데이터 가져오기
     qa_data = fetch_data("질의응답시트")
     
-    # 2. 참고할 데이터 구성 (에러 방지를 위해 문자열 변환 및 개수 제한)
+    # 2. 참고할 데이터 구성 (에러 방지용 처리)
     context = ""
     if qa_data:
         context_list = []
@@ -76,28 +76,31 @@ def get_ai_response(user_query):
             if q and a:
                 context_list.append(f"Q: {q}\nA: {a}")
         
-        # 데이터가 너무 많으면 400 에러가 날 수 있으므로 최신 50개로 제한
+        # ⚠️ 중요: 데이터가 너무 많으면 404/400 오류가 날 수 있으므로 최신 50개로 제한
         context = "\n\n".join(context_list[-50:]) 
     else:
         context = "현재 등록된 지침 데이터가 없습니다."
 
-    # 3. AI 프롬프트 작성
+    # 3. AI 프롬프트 작성 (모바일 최적화 지시어 추가)
     prompt = f"""
     당신은 충청호남본부 보험 전문가입니다. 아래 [지침 데이터]를 바탕으로 설계사의 질문에 답하세요.
-    데이터에 없는 내용은 지침서에 없다고 안내하세요.
-
+    
     [지침 데이터]:
     {context}
     
     질문: {user_query}
+    
+    [답변 가이드]:
+    1. 반드시 제공된 데이터에 기반하여 답변하세요.
+    2. 데이터에 없는 내용은 "현재 등록되지 않은 지침입니다. 지점 매니저에게 확인 부탁드립니다."라고 안내하세요.
+    3. 답변은 스마트폰에서 보기 편하게 핵심만 요약하고 불렛 포인트(•)를 사용하세요.
     """
     
     try:
-        # API 키 설정
+        # ⚠️ API 설정 및 모델 선언 (404 해결 포인트)
         genai.configure(api_key=st.secrets["gemini_api_key"])
         
-        # ⚠️ 404 에러 해결 포인트: 모델 이름을 아래와 같이 지정합니다.
-        # 버전이나 환경에 따라 'models/gemini-1.5-flash' 또는 'gemini-1.5-flash'를 사용합니다.
+        # 모델명을 명확히 지정 (이름이 틀리면 404가 발생함)
         model = genai.GenerativeModel('gemini-1.5-flash')
         
         # 답변 생성
@@ -106,11 +109,13 @@ def get_ai_response(user_query):
         if response and response.text:
             return response.text
         else:
-            return "AI가 답변을 생성하지 못했습니다. 질문을 다시 입력해 주세요."
+            return "AI가 답변을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요."
             
     except Exception as e:
-        # 404 에러가 반복되면 'gemini-pro'로 바꿔서 시도해보라는 메시지 출력
-        return f"⚠️ 서비스 일시 오류 (관리자 문의): {str(e)}"# --- 4. 메인 채팅 화면 ---
+        # 에러 발생 시 상세 원인 출력 (디버깅용)
+        return f"⚠️ 서비스 일시 오류 (관리자 문의): {str(e)}"
+
+#메인채팅화면
 def main_page():
     st.set_page_config(page_title="충호본부 AI Assistant", layout="wide")
     st.write(f"### 👋 안녕하세요, {st.session_state['user_name']}님!")
