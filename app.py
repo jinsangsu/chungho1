@@ -63,32 +63,55 @@ def login():
 
 # --- 3. AI 답변 생성 ---
 def get_ai_response(user_query):
-    # '질의응답시트' 탭에서 데이터를 가져옴
+    # 1. 시트에서 질의응답 데이터 가져오기
     qa_data = fetch_data("질의응답시트")
     
-    context = f"[충호본부 질의응답 지침서]\n{str(qa_data)}"
-    
+    # 2. 참고할 데이터 구성 (에러 방지를 위해 문자열 변환 및 필터링)
+    if qa_data:
+        # 질문과 답변 컬럼이 있는 데이터만 추출하여 텍스트로 병합
+        context_list = []
+        for item in qa_data:
+            q = str(item.get("질문", "")).strip()
+            a = str(item.get("답변", "")).strip()
+            if q and a:
+                context_list.append(f"Q: {q}\nA: {a}")
+        
+        # 데이터가 너무 많으면 오류가 나므로 최신/주요 데이터 60개 정도로 제한
+        context = "\n\n".join(context_list[-60:]) 
+    else:
+        context = "현재 등록된 업무 지침이 없습니다."
+
+    # 3. AI 프롬프트 작성
     prompt = f"""
-    당신은 충호본부 설계사들을 돕는 전문 AI 비서입니다.
-    사용자 이름: {st.session_state['user_name']}님
+    당신은 충청호남본부 보험 전문가입니다. 아래 [지침 데이터]를 참고하여 설계사의 질문에 답하세요.
     
-    [규칙]
-    1. 인삿말이나 일상 대화는 밝고 친절하게 응답하세요.
-    2. 업무 질문은 반드시 제공된 [충호본부 질의응답 지침서]를 바탕으로 정확하게 답변하세요.
-    3. 지침서에 없는 업무 내용은 "죄송합니다. 해당 지침은 등록되지 않았습니다."라고 정중히 안내하세요.
-    4. 답변은 모바일에서 보기 편하게 요약하여 전달하세요.
-    
-    참고 데이터:
+    [지침 데이터]:
     {context}
     
     질문: {user_query}
+    
+    답변 가이드:
+    1. 반드시 제공된 데이터에 기반하여 답변하세요.
+    2. 데이터에 없는 내용은 "현재 시스템에 등록되지 않은 지침입니다. 관리자에게 문의하세요."라고 답하세요.
+    3. 모바일에서 보기 좋게 핵심만 요약하여 불렛 포인트(•)를 사용해 답변하세요.
     """
     
-    genai.configure(api_key=st.secrets["gemini_api_key"])
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    response = model.generate_content(prompt)
-    return response.text
-
+    try:
+        # API 설정 및 모델 호출
+        genai.configure(api_key=st.secrets["gemini_api_key"])
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # 세이프티 세팅 추가 (필요 시)
+        response = model.generate_content(prompt)
+        
+        if response and response.text:
+            return response.text
+        else:
+            return "AI가 적절한 답변을 생성하지 못했습니다. 질문을 다시 다듬어주세요."
+            
+    except Exception as e:
+        # InvalidArgument 등 구체적인 에러를 화면에 표시하여 디버깅 도움
+        return f"⚠️ 서비스 일시 오류 (관리자 문의): {str(e)}"
 # --- 4. 메인 채팅 화면 ---
 def main_page():
     st.set_page_config(page_title="충호본부 AI Assistant", layout="wide")
