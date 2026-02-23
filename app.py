@@ -183,8 +183,14 @@ def get_ai_response(user_query):
             
     except Exception as e:
         # 에러 발생 시 상세 원인 출력 (디버깅용)
-        return f"⚠️ 서비스 일시 오류 (관리자 문의): {str(e)}"
-
+        msg = str(e)
+        if "429" in msg or "Quota exceeded" in msg:
+            return (
+                f"{st.session_state.get('user_name','사용자')}님, 현재 AI 처리량이 많아 잠시 자동응답이 제한되었습니다.\n\n"
+                "• 지금은 ‘등록된 지침(시트 원문)’ 기반으로만 안내됩니다.\n"
+                "• 지침에 없는 경우: 지점 매니저 확인 부탁드립니다."
+            )
+        return f"⚠️ 서비스 일시 오류 (관리자 문의): {msg}"
 #메인채팅화면
 def main_page():
     st.set_page_config(page_title="충호본부 AI Assistant", layout="wide")
