@@ -3,6 +3,45 @@ import gspread
 from google.oauth2.service_account import Credentials
 import google.generativeai as genai
 
+
+def get_working_gemini_model():
+    genai.configure(api_key=st.secrets["gemini_api_key"])
+
+    # 1) 우선 흔히 쓰는 후보들부터 시도
+    candidates = [
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-pro",
+        "gemini-1.5-pro-latest",
+        "gemini-pro",  # 구버전 호환용
+    ]
+
+    for name in candidates:
+        try:
+            m = genai.GenerativeModel(name)
+            # 아주 짧게 호출해 모델 유효성 확인
+            _ = m.generate_content("ping")
+            return m
+        except Exception:
+            pass
+
+    # 2) 그래도 안 되면 list_models로 generateContent 가능한 모델 자동 선택
+    try:
+        models = list(genai.list_models())
+        # 사이드바에 모델 목록 일부 표시(디버깅)
+        st.sidebar.caption("✅ Available models:")
+        for mm in models[:15]:
+            st.sidebar.caption(f"- {mm.name} / {getattr(mm, 'supported_generation_methods', [])}")
+
+        for mm in models:
+            methods = getattr(mm, "supported_generation_methods", [])
+            if "generateContent" in methods:
+                return genai.GenerativeModel(mm.name)  # mm.name은 보통 "models/..." 형태
+    except Exception as e:
+        st.sidebar.error(f"list_models 실패: {e}")
+
+    raise RuntimeError("generateContent 지원 모델을 찾지 못했습니다.")
+
 # --- 1. 설정 및 권한 ---
 GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
