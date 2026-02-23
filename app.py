@@ -147,7 +147,7 @@ def get_ai_response(user_query):
         genai.configure(api_key=st.secrets["gemini_api_key"])
         
         # 모델명을 명확히 지정 (이름이 틀리면 404가 발생함)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = get_working_gemini_model()
         
         # 답변 생성
         response = model.generate_content(prompt)
