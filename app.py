@@ -2,7 +2,7 @@ import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 import google.generativeai as genai
-
+import re
 
 def get_working_gemini_model():
     genai.configure(api_key=st.secrets["gemini_api_key"])
@@ -100,6 +100,25 @@ def login():
         else:
             st.error("일치하는 사번이 없습니다. 시트의 사번을 확인해 주세요.")
 
+#Top-k 뽑는 함수 2개 추가
+def normalize_tokens(text: str) -> set:
+    text = re.sub(r"\s+", " ", str(text)).strip().lower()
+    tokens = re.findall(r"[0-9a-zA-Z가-힣]+", text)
+    return set(tokens)
+
+def pick_top_k_qa(user_query: str, qa_data: list, k: int = 5):
+    q_tokens = normalize_tokens(user_query)
+    scored = []
+    for idx, item in enumerate(qa_data):
+        q = str(item.get("질문", "")).strip()
+        a = str(item.get("답변", "")).strip()
+        if not q or not a:
+            continue
+        score = len(q_tokens & normalize_tokens(q))
+        scored.append((score, idx, q, a))
+    scored.sort(reverse=True, key=lambda x: x[0])
+    return scored[:k]
+
 # --- 3. AI 답변 생성 ---
 def get_ai_response(user_query):
     # 1. 시트에서 질의응답 데이터 가져오기
@@ -108,15 +127,17 @@ def get_ai_response(user_query):
     # 2. 참고할 데이터 구성 (에러 방지용 처리)
     context = ""
     if qa_data:
+        top = pick_top_k_qa(user_query, qa_data, k=5)
+
         context_list = []
-        for item in qa_data:
-            q = str(item.get("질문", "")).strip()
-            a = str(item.get("답변", "")).strip()
-            if q and a:
-                context_list.append(f"Q: {q}\nA: {a}")
-        
-        # ⚠️ 중요: 데이터가 너무 많으면 404/400 오류가 날 수 있으므로 최신 50개로 제한
-        context = "\n\n".join(context_list[-50:]) 
+        for score, idx, q, a in top:
+            context_list.append(
+                f"[근거#{idx+2} / score={score}]\n"
+                f"Q: {q}\n"
+                f"A: {a}"
+            )
+
+        context = "\n\n".join(context_list) if context_list else ""
     else:
         context = "현재 등록된 지침 데이터가 없습니다."
 
