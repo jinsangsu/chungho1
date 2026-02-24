@@ -220,23 +220,84 @@ def get_ai_response(user_query):
 #메인채팅화면
 def main_page():
     
-    st.write(f"### 👋 안녕하세요, {st.session_state['user_name']}님!")
+    # --- [추가 시작] 모바일 최적화 CSS 디자인 ---
+    st.markdown("""
+        <style>
+        .stApp { background-color: #F8F9FA; }
+        .main-header {
+            background: linear-gradient(90deg, #072e6e 0%, #0047AB 100%);
+            padding: 25px 20px;
+            border-radius: 0 0 20px 20px;
+            color: white;
+            text-align: center;
+            margin: -60px -20px 20px -20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        div.stButton > button {
+            width: 100%; height: 80px; border-radius: 15px;
+            background-color: white; border: 1px solid #E0E0E0;
+            font-weight: bold; font-size: 16px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+        <div class="main-header">
+            <h2 style='margin:0;'>🏛️ 충청호남본부 AI</h2>
+            <p style='margin:5px 0 0 0; opacity:0.8;'>{st.session_state['user_name']}님, 오늘도 화이팅!</p>
+        </div>
+    """, unsafe_allow_html=True)
+    # --- [추가 끝] ---
     
     if st.sidebar.button("로그아웃"):
         del st.session_state["logged_in"]
         st.rerun()
+    
+  # --- [추가 시작] 퀵 메뉴 버튼 영역 ---
+    if "auto_question" not in st.session_state:
+        st.session_state.auto_question = None
+
+    st.write("⚡ **빠른 업무 조회**")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📄\n구비서류"):
+            st.session_state.auto_question = "보험금 청구 시 공통 구비서류 알려줘"
+        if st.button("🔄\n계약변경"):
+            st.session_state.auto_question = "계약자 변경 시 필요 서류 알려줘"
+    with col2:
+        if st.button("💳\n카드납부"):
+            st.session_state.auto_question = "보험사별 카드납부 가능 여부 알려줘"
+        if st.button("📢\n본부지침"):
+            st.session_state.auto_question = "최근 본부 업무 공지사항 요약해줘"
+    
+    st.divider()
+    # --- [추가 끝] ---
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
-
+    
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    if prompt := st.chat_input("업무 지침이나 궁금한 점을 물어보세요..."):
+    # 하단 채팅 입력창
+    user_input = st.chat_input("질문을 입력하거나 위 버튼을 누르세요...")
+    
+    # 버튼 클릭(auto_question)이 있거나, 직접 입력(user_input)이 있는 경우 처리
+    prompt = None
+    if st.session_state.auto_question:
+        prompt = st.session_state.auto_question
+        st.session_state.auto_question = None # 사용 후 리셋
+    elif user_input:
+        prompt = user_input
+
+    if prompt:
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
+        
+        # 여기서 기존 코드의 답변 생성 로직(get_working_gemini_model 등)을 실행하면 됩니다.
+        # (기존 handle_question 함수가 있다면 호출, 없다면 아래에 구현)
 
         with st.chat_message("assistant"):
             with st.spinner("지침을 분석 중입니다..."):
