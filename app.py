@@ -132,6 +132,24 @@ def get_ai_response(user_query):
     if qa_data:
         top = pick_top_k_qa(user_query, qa_data, k=5)
 
+
+    LOW = 2   # 이보다 낮으면 "등록되지 않은 지침"으로 차단
+    HIGH = 4  # 이 이상이면 시트 원문을 바로 안내(LLM 호출 X)
+
+    top_score = top[0][0] if top else 0
+
+# 1) 차단: 유사도 낮음 → LLM 호출 없이 종료
+    if top_score < LOW:
+        return f"{user_name}님, 현재 등록되지 않은 지침입니다. 지점 매니저에게 확인 부탁드립니다."
+
+# 2) 직반환: 유사도 높음 → LLM 호출 없이 시트 답변 안내
+    if top_score >= HIGH:
+        best_score, best_idx, best_q, best_a = top[0]
+        return (
+            f"{user_name}님, 아래 지침을 안내드립니다.\n\n"
+            f"• {best_a}\n\n"
+            f"(근거: 질의응답시트 #{best_idx+2})"
+        )
         context_list = []
         for score, idx, q, a in top:
             context_list.append(
@@ -147,7 +165,7 @@ def get_ai_response(user_query):
     # 3. AI 프롬프트 작성 (인사 및 일상 대화 허용 버전)
     prompt = f"""
     당신은 KB손해보험 충청호남본부의 '충호 Assistant'입니다. 
-    {user_name}님들에게 친절하고 든든한 파트너가 되어주세요.
+    {user_name}님에게 친절하고 든든한 파트너가 되어주세요.
 
     [답변 원칙]
     0. 답변의 첫 문장은 반드시 "{user_name}님," 으로 시작하세요.
