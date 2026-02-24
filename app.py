@@ -110,39 +110,53 @@ def normalize_tokens(text: str) -> set:
 def pick_top_k_qa(user_query: str, qa_data: list, k: int = 5):
     q_tokens = normalize_tokens(user_query)
     scored = []
+    uq_norm = str(user_query).strip().lower()
+
     for idx, item in enumerate(qa_data):
         q = str(item.get("질문", "")).strip()
         a = str(item.get("답변", "")).strip()
         if not q or not a:
             continue
+
+        q_norm = q.lower()
+
+        # 기본 토큰 교집합 점수
         score = len(q_tokens & normalize_tokens(q))
+
+        # 한 단어/짧은 질의 보너스
+        if uq_norm and uq_norm in q_norm:
+            score += 3
+        elif q_norm and q_norm in uq_norm:
+            score += 2
+
         scored.append((score, idx, q, a))
+
     scored.sort(reverse=True, key=lambda x: x[0])
     return scored[:k]
+
 
 # --- 3. AI 답변 생성 ---
 def get_ai_response(user_query):
     user_name = st.session_state.get("user_name", "사용자")
 
-  # 1. 시트에서 질의응답 데이터 가져오기
+    # 1) 시트 데이터 조회
     qa_data = fetch_data("질의응답시트")
-    
-    # 2. 참고할 데이터 구성 (에러 방지용 처리)
-    context = ""
-    if qa_data:
-        top = pick_top_k_qa(user_query, qa_data, k=5)
 
+    if not qa_data:
+        return f"{user_name}님, 현재 등록된 지침 데이터가 없습니다."
 
-    LOW = 2   # 이보다 낮으면 "등록되지 않은 지침"으로 차단
-    HIGH = 4  # 이 이상이면 시트 원문을 바로 안내(LLM 호출 X)
+    # 2) Top-k 검색
+    top = pick_top_k_qa(user_query, qa_data, k=5)
 
+    LOW = 1
+    HIGH = 5
     top_score = top[0][0] if top else 0
 
-# 1) 차단: 유사도 낮음 → LLM 호출 없이 종료
+    # 3) LOW: 차단 (LLM 호출 X)
     if top_score < LOW:
         return f"{user_name}님, 현재 등록되지 않은 지침입니다. 지점 매니저에게 확인 부탁드립니다."
 
-# 2) 직반환: 유사도 높음 → LLM 호출 없이 시트 답변 안내
+    # 4) HIGH: 직반환 (LLM 호출 X)
     if top_score >= HIGH:
         best_score, best_idx, best_q, best_a = top[0]
         return (
@@ -150,66 +164,54 @@ def get_ai_response(user_query):
             f"• {best_a}\n\n"
             f"(근거: 질의응답시트 #{best_idx+2})"
         )
-        context_list = []
-        for score, idx, q, a in top:
-            context_list.append(
-                f"[근거#{idx+2} / score={score}]\n"
-                f"Q: {q}\n"
-                f"A: {a}"
-            )
 
-        context = "\n\n".join(context_list) if context_list else ""
-    else:
-        context = "현재 등록된 지침 데이터가 없습니다."
+    # 5) MID: LLM 호출용 context 구성
+    context_list = []
+    for score, idx, q, a in top:
+        context_list.append(
+            f"[근거#{idx+2} / score={score}]\n"
+            f"Q: {q}\n"
+            f"A: {a}"
+        )
+    context = "\n\n".join(context_list)
 
-    # 3. AI 프롬프트 작성 (인사 및 일상 대화 허용 버전)
+    # 6) 프롬프트 작성
     prompt = f"""
-    당신은 KB손해보험 충청호남본부의 '충호 Assistant'입니다. 
-    {user_name}님에게 친절하고 든든한 파트너가 되어주세요.
+당신은 KB손해보험 충청호남본부의 '충호 Assistant'입니다.
+{user_name}님에게 친절하고 든든한 파트너가 되어주세요.
 
-    [답변 원칙]
-    0. 답변의 첫 문장은 반드시 "{user_name}님," 으로 시작하세요.
-    1. 인삿말(안녕, 반가워 등)이나 일상적인 대화에는 보험 전문가답게 따뜻하고 위트 있게 응답하세요.
-    2. 업무 관련 질문인 경우, 아래 제공된 [지침 데이터]를 최우선으로 참고하여 정확하게 답하세요.
-    3. [지침 데이터]에 없는 전문적인 업무 지침은 "{user_name}님, 현재 등록되지 않은 지침입니다. 지점 매니저에게 확인 부탁드립니다."라고 안내하세요.
-    4. 모든 답변은 모바일에서 읽기 편하게 짧은 문장과 불렛 포인트(•)를 사용하세요.
-    
-    [지침 데이터]:
-    {context}
-    
-    질문: {user_query}
-    
-    [답변 가이드]:
-    1. 반드시 제공된 데이터에 기반하여 답변하세요.
-    2. 데이터에 없는 내용은 "{user_name}님, 현재 등록되지 않은 지침입니다. 지점 매니저에게 확인 부탁드립니다."라고 안내하세요.
-    3. 답변은 스마트폰에서 보기 편하게 핵심만 요약하고 불렛 포인트(•)를 사용하세요.
-    """
-    
+[답변 원칙]
+0. 답변의 첫 문장은 반드시 "{user_name}님," 으로 시작하세요.
+1. 업무 관련 질문은 아래 [지침 데이터]를 기반으로 답하세요.
+2. 데이터에 없는 경우 "{user_name}님, 현재 등록되지 않은 지침입니다. 지점 매니저에게 확인 부탁드립니다."라고 안내하세요.
+3. 답변은 모바일에서 읽기 쉽게 불렛(•)으로 정리하세요.
+
+[지침 데이터]
+{context}
+
+질문: {user_query}
+"""
+
     try:
-        # ⚠️ API 설정 및 모델 선언 (404 해결 포인트)
         genai.configure(api_key=st.secrets["gemini_api_key"])
-        
-        # 모델명을 명확히 지정 (이름이 틀리면 404가 발생함)
         model = get_working_gemini_model()
-        
-        # 답변 생성
         response = model.generate_content(prompt)
-        
+
         if response and response.text:
             return response.text
-        else:
-            return "AI가 답변을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요."
-            
+        return "AI가 답변을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요."
+
     except Exception as e:
-        # 에러 발생 시 상세 원인 출력 (디버깅용)
         msg = str(e)
         if "429" in msg or "Quota exceeded" in msg:
             return (
-                f"{st.session_state.get('user_name','사용자')}님, 현재 AI 처리량이 많아 잠시 자동응답이 제한되었습니다.\n\n"
-                "• 지금은 ‘등록된 지침(시트 원문)’ 기반으로만 안내됩니다.\n"
+                f"{user_name}님, 현재 AI 처리량이 많아 잠시 자동응답이 제한되었습니다.\n\n"
+                "• 지금은 등록된 지침 기반으로만 안내됩니다.\n"
                 "• 지침에 없는 경우: 지점 매니저 확인 부탁드립니다."
             )
         return f"⚠️ 서비스 일시 오류 (관리자 문의): {msg}"
+
+
 #메인채팅화면
 def main_page():
     st.set_page_config(page_title="충호본부 AI Assistant", layout="wide")
