@@ -3,6 +3,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import google.generativeai as genai
 import re
+st.set_page_config(page_title="충호본부 AI Assistant", layout="wide") 
 
 def get_working_gemini_model():
     genai.configure(api_key=st.secrets["gemini_api_key"])
@@ -49,7 +50,7 @@ GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-#@st.cache_resource
+@st.cache_resource
 def get_gs_client():
     # Streamlit Cloud의 Secrets 설정을 그대로 사용
     creds = Credentials.from_service_account_info(
@@ -81,16 +82,20 @@ def fetch_data(sheet_name):
         st.error(f"연동 오류 발생: {e}")
         return []
 
+@st.cache_data(ttl=120)
+def fetch_data_cached(sheet_name):
+    return fetch_data(sheet_name)
+
+
 # --- 2. 로그인 화면 ---
 def login():
-    st.set_page_config(page_title="충호본부 AI 비서 로그인", layout="centered")
     st.title("🛡️ 충호본부 스마트 AI 비서")
     st.write("사번으로 로그인하여 서비스를 시작하세요.")
 
     emp_id = st.text_input("사번(ID) 입력", placeholder="사번을 입력하세요", type="password")
     
     if st.button("로그인", use_container_width=True):
-        member_list = fetch_data("사원명부")
+        member_list = fetch_data_cached("사원명부")
         # 사번 매칭 (사번이 숫자로 인식될 수 있어 str로 변환 대조)
         user = next((row for row in member_list if str(row.get('사번')) == emp_id), None)
         
@@ -140,7 +145,7 @@ def get_ai_response(user_query):
     user_name = st.session_state.get("user_name", "사용자")
 
     # 1) 시트 데이터 조회
-    qa_data = fetch_data("질의응답시트")
+    qa_data = fetch_data_cached("질의응답시트")
 
     if not qa_data:
         return f"{user_name}님, 현재 등록된 지침 데이터가 없습니다."
@@ -214,7 +219,7 @@ def get_ai_response(user_query):
 
 #메인채팅화면
 def main_page():
-    st.set_page_config(page_title="충호본부 AI Assistant", layout="wide")
+    
     st.write(f"### 👋 안녕하세요, {st.session_state['user_name']}님!")
     
     if st.sidebar.button("로그아웃"):
