@@ -389,8 +389,14 @@ def main_page():
     # 채팅 메시지 출력
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
+            if message.get("type") == "image":
+                st.image(
+                    message["url"],
+                    caption=message.get("caption", ""),
+                    use_container_width=True
+                )
+            else:
+                st.markdown(message.get("content", ""))
     # 4. 입력 처리
     auto_p = st.session_state.get("temp_prompt", None)
     user_p = st.chat_input("궁금한 점을 입력하세요...")
@@ -420,11 +426,20 @@ def main_page():
                         latest = award_data[-1]
                         img_url = get_drive_image_url(latest['파일링크'])
                         st.image(img_url, caption=f"🏆 최신 시상 공지: {latest['제목']}", use_container_width=True)
-                        
+                        st.session_state.messages.append({
+                            "role": "assistant",
+                            "type": "image",
+                            "url": img_url,
+                            "caption": f"🏆 최신 시상 공지: {latest['제목']}"
+                        })
                         award_context = f"\n\n[최신 시상안 정보]\n- 제목: {latest['제목']}\n- 파일: {latest['파일링크']}\n- 상태: {latest.get('핵심내용', '')}"
                         faq_context += award_context
                 except Exception as e:
-                    st.caption(f"(시상안 이미지 로드 참고: {e})")
+                    st.error(f"시상안 이미지 로드 실패: {e}")
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": f"⚠️ 시상안 이미지 로드 실패: {e}"
+                    })
 
             # 3. [AI 답변 생성] (get_ai_response로 통일)
             try:
