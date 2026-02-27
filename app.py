@@ -278,7 +278,7 @@ def main_page():
                 st.warning("📅 지역단 조회 일정 안내")
             
             # '적용' 버튼 클릭 시 채팅창에 해당 내용 요약 요청 자동 입력
-            if st.button(f"{tab_choice} 내용 요약보기"):
+            if st.button(f"{tab_choice} 내용"):
                 st.session_state.temp_prompt = f"현재 등록된 '{tab_choice}'의 핵심 내용을 요약해서 알려줘."
 
         st.divider()
