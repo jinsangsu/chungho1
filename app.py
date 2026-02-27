@@ -246,28 +246,20 @@ def main_page():
         }}
 
         /* "안녕하세요, 00님" - 그라데이션 텍스트 */
-        .gemini-title {{
-            font-size: 56px;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-            background: linear-gradient(74deg, #4285f4 0%, #9b72cb 9%, #d96570 20%, #4285f4 40%);
-            background-size: 400% 100%;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0px;
-            line-height: 1.2;
-            animation: move-gradient 8s linear infinite;
-        }}
+        .gemini-title {
+            font-size: 48px;
+            font-weight: 700;
+            color: #2B2B2B;   /* KB 딥그레이 */
+            margin-bottom: 6px;
+        }
 
         /* "무엇을 도와드릴까요?" - 흐릿한 회색 텍스트 */
-        .gemini-subtitle {{
-            font-size: 56px;
-            font-weight: 600;
-            color: #e3e3e3; /* 제미나이 특유의 연한 회색 */
-            letter-spacing: -0.02em;
-            line-height: 1.2;
-            margin-top: -5px;
-        }}
+        .gemini-subtitle {
+            font-size: 52px;
+            font-weight: 800;
+            color: #FFCC00;   /* KB 옐로우 */
+            margin-bottom: 60px;
+        }
 
         @keyframes move-gradient {{
             0% {{ background-position: 100% 50%; }}
