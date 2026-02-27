@@ -372,8 +372,9 @@ def main_page():
         st.markdown("### 📜 최근 질문")
         if "messages" in st.session_state and len(st.session_state.messages) > 0:
             user_questions = [m["content"] for m in st.session_state.messages if m["role"] == "user"]
-            for q in reversed(user_questions[-10:]): # 최근 5개
-                if st.button(f"🔍 {q[:15]}...", key=f"hist_{q}"):
+            for i, q in enumerate(reversed(user_questions[-10:])):
+    # key값 뒤에 i를 붙여서 똑같은 질문이라도 중복되지 않게 만듭니다.
+                if st.button(f"🔍 {q[:15]}...", key=f"hist_{i}_{q}"):
                     st.session_state.temp_prompt = q
         else:
             st.caption("질문 내역이 없습니다.")
