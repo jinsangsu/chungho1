@@ -228,73 +228,88 @@ def get_ai_response(user_query):
 def main_page():
     user_name = st.session_state.get("user_name", "사용자") 
 
-    # 1. 제미나이 스타일 전용 CSS 및 애니메이션 설정
-    st.markdown(f"""
-        <style>
-        /* 배경 설정 */
-        .stApp {{
-            background-color: #ffffff;
-        }}
-        
-        /* 제미나이 스타일 메인 헤더 컨테이너 */
-        .gemini-container {{
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            padding: 80px 10% 40px 10%;
-            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
-        }}
+    # 1. KB 테마 및 제미나이 스타일 통합 CSS
+    st.markdown("""
+    <style>
+    /* ===== KB Theme & Base Setup ===== */
+    :root {
+      --kb-yellow: #FFCC00;
+      --kb-yellow-dark: #E6B800;
+      --kb-dark: #2B2B2B;
+      --kb-gray: #5A5A5A;
+      --bg: #F6F7F9;
+      --radius: 22px;
+    }
 
-        /* "안녕하세요, 00님" - 그라데이션 텍스트 */
-        .gemini-title {
-            font-size: 48px;
-            font-weight: 700;
-            color: #2B2B2B;   /* KB 딥그레이 */
-            margin-bottom: 6px;
-        }
+    /* 전체 배경 설정 */
+    .stApp { background: var(--bg); }
 
-        /* "무엇을 도와드릴까요?" - 흐릿한 회색 텍스트 */
-        .gemini-subtitle {
-            font-size: 52px;
-            font-weight: 800;
-            color: #FFCC00;   /* KB 옐로우 */
-            margin-bottom: 60px;
-        }
+    /* 중앙 컨테이너 (상단 문구 영역) */
+    .gemini-container {
+      max-width: 980px;
+      margin: 60px auto 0 auto;
+      padding: 0 18px;
+      font-family: 'Pretendard', sans-serif;
+    }
 
-        @keyframes move-gradient {{
-            0% {{ background-position: 100% 50%; }}
-            100% {{ background-position: 0% 50%; }}
-        }}
+    /* 상단 첫 줄 (인사) */
+    .gemini-title {
+      font-size: 48px;
+      font-weight: 700;
+      color: var(--kb-dark);
+      margin-bottom: 6px;
+    }
 
-        /* 채팅 입력창 그라데이션 보더 효과 */
-        div[data-testid="stChatInput"] {{
-            border: 1.5px solid #e3e3e3 !important;
-            border-radius: 32px !important;
-            background: white !important;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-        }}
-        
-        /* 모바일 대응 (반응형) */
-        @media (max-width: 768px) {{
-            .gemini-title, .gemini-subtitle {{
-                font-size: 32px;
-            }}
-            .gemini-container {{
-                padding: 40px 5% 20px 5%;
-            }}
-        }}
-        </style>
+    /* 상단 두 번째 줄 (메인 질문) */
+    .gemini-subtitle {
+      font-size: 52px;
+      font-weight: 800;
+      color: var(--kb-yellow);
+      margin-bottom: 60px;
+    }
+
+    /* ===== Chat Input KB Style (모바일 최적화) ===== */
+    /* 입력창 테두리 및 그림자 */
+    div[data-testid="stChatInput"] {
+      border: 2px solid var(--kb-yellow) !important;
+      border-radius: 32px !important;
+      background: #ffffff !important;
+      box-shadow: 0 12px 32px rgba(255, 204, 0, 0.15) !important;
+    }
+
+    /* 입력 중일 때 강조 */
+    div[data-testid="stChatInput"]:focus-within {
+      border: 2px solid var(--kb-yellow-dark) !important;
+      box-shadow: 0 6px 18px rgba(255, 204, 0, 0.25) !important;
+    }
+
+    /* 내부 입력 영역 테두리 제거 */
+    div[data-testid="stChatInput"] > div {
+      border: none !important;
+    }
+
+    /* 커서 색상 및 텍스트 설정 */
+    textarea {
+      caret-color: var(--kb-yellow);
+    }
+
+    /* 모바일 반응형 폰트 조절 */
+    @media (max-width: 768px) {
+      .gemini-title { font-size: 32px; }
+      .gemini-subtitle { font-size: 36px; }
+      .gemini-container { margin-top: 30px; }
+    }
+    </style>
     """, unsafe_allow_html=True)
 
-    # 2. 메인 페이지 인삿말 (메시지가 없을 때만 표시)
+    # 2. 메인 페이지 인삿말
     if "messages" not in st.session_state or len(st.session_state.messages) == 0:
         st.markdown(f"""
             <div class="gemini-container">
                 <div class="gemini-title">안녕하세요, {user_name}님</div>
                 <div class="gemini-subtitle">무엇을 도와드릴까요?</div>
             </div>
-        """, unsafe_allow_html=True)
-    # --- (이하 기존 사이드바 및 채팅 로직 유지) ---
+        """, unsafe_allow_html=True)    # --- (이하 기존 사이드바 및 채팅 로직 유지) ---
 
     # 2. 사이드바 구성
     with st.sidebar:
