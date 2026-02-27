@@ -402,6 +402,27 @@ def main_page():
             st.markdown(final_prompt)
 
         with st.chat_message("assistant"):
+            # --- [추가] 시상안 자동 감지 및 이미지 분석 로직 ---
+            # --- [추가] 시상안 자동 감지 및 이미지 분석 로직 ---
+            if any(keyword in prompt for keyword in ["시상", "보너스", "프로모션"]):
+            try:
+                # 1. '시상안' 탭을 엽니다.
+                award_sheet = client.open("충호본부데이터베이스").worksheet("시상안")
+                award_data = award_sheet.get_all_records()
+                
+                if award_data:
+                    latest = award_data[-1]  # 가장 최근(마지막 행) 데이터
+                    img_url = get_drive_image_url(latest['파일링크'])
+                    
+                    # 2. 설계사 화면에 시상 이미지를 즉시 출력합니다.
+                    st.image(img_url, caption=f"📢 최신 시상 공지: {latest['제목']}")
+                    
+                    # 3. AI 답변에 시상안 정보를 주입합니다.
+                    award_info = f"\n\n[최신 시상안 참고정보]\n제목: {latest['제목']}\n요약내용: {latest.get('핵심내용', '이미지 참조')}"
+                    faq_context += award_info 
+            except Exception as e:
+                st.error(f"시상안 데이터를 불러오지 못했습니다: {e}")
+
             with st.spinner("잠시만 기다려주세요..."):
                 answer = get_ai_response(final_prompt)
                 st.markdown(answer)
