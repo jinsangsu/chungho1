@@ -409,61 +409,29 @@ def main_page():
             # 2. [시상안 이미지 우선 출력] '시상' 키워드 감지 시
             if any(k in final_prompt for k in ["시상", "보너스", "프로모션", "이벤트"]):
                 try:
-                    # 구글 시트 URL을 직접 지정하여 정확도를 높입니다.
                     target_url = "https://docs.google.com/spreadsheets/d/1C2tEZ1tGgbhfLw5LsUWrzttByD-zt_CZobg-FVTKyWo/edit"
                     award_sheet = client.open_by_url(target_url).worksheet("시상안")
                     award_data = award_sheet.get_all_records()
                     
                     if award_data:
-                        latest = award_data[-1]  # 가장 하단(최신) 데이터
+                        latest = award_data[-1]
                         img_url = get_drive_image_url(latest['파일링크'])
-                        
-                        # [핵심] AI 답변보다 먼저 이미지를 화면에 띄웁니다.
                         st.image(img_url, caption=f"🏆 최신 시상 공지: {latest['제목']}", use_container_width=True)
                         
-                        # AI에게 전달할 배경 지식 구성
                         award_context = f"\n\n[최신 시상안 정보]\n- 제목: {latest['제목']}\n- 파일: {latest['파일링크']}\n- 상태: {latest.get('핵심내용', '')}"
                         faq_context += award_context
                 except Exception as e:
                     st.caption(f"(시상안 이미지 로드 참고: {e})")
 
-            # 3. [AI 답변 생성] 스트리밍 방식으로 출력
-            model = get_working_gemini_model()
-            if model:
-                try:
-                    # 질의응답 시트의 일반 FAQ 데이터도 함께 참조
-                    qa_data = fetch_data_cached("질의응답시트")
-                    top_qa = pick_top_k_qa(final_prompt, qa_data, k=3)
-                    for _, _, q, a in top_qa:
-                        faq_context += f"\nQ: {q}\nA: {a}"
+            # 3. [AI 답변 생성] (get_ai_response로 통일)
+            try:
+                ai_answer = get_ai_response(final_prompt)
+                st.markdown(ai_answer)
+                st.session_state.messages.append({"role": "assistant", "content": ai_answer})
+            except Exception as e:
+                st.error(f"⚠️ 답변 처리 중 오류가 발생했습니다: {e}")
 
-                    # AI 프롬프트 강화
-                    system_instruction = (
-                        f"당신은 KB손해보험 충청호남본부의 '충호 비서'입니다. {user_name}님에게 답변하세요.\n"
-                        "상단에 시상안 이미지가 표시되었다면, 해당 이미지를 참고하라고 먼저 안내하세요.\n"
-                        "정보가 'AI 분석 대기 중'이라면 이미지의 텍스트를 자세히 보라고 친절히 가이드하세요."
-                    )
-                    
-                    response = model.generate_content(
-                        f"{system_instruction}\n\n[참고 정보]: {faq_context}\n\n[질문]: {final_prompt}",
-                        stream=True
-                    )
-                    
-                    full_response = ""
-                    placeholder = st.empty()
-                    for chunk in response:
-                        if chunk.text:
-                            full_response += chunk.text
-                            placeholder.markdown(full_response + "▌")
-                    placeholder.markdown(full_response)
-                    
-                    st.session_state.messages.append({"role": "assistant", "content": full_response})
-                except Exception as e:
-                    st.error(f"AI 답변 생성 중 오류: {e}")
-
-        # 모든 처리가 완료되면 화면 갱신
-        st.rerun()
-
+          
 # --- 5. 앱 실행 ---
 if __name__ == "__main__":
     if "logged_in" not in st.session_state:
