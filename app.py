@@ -271,9 +271,9 @@ def main_page():
             
             # 선택한 항목에 따른 시트 데이터 필터링 또는 고정 안내
             if tab_choice == "주요 업무공지":
-                st.info("💡 2월 마감 지침 전달 건")
+                st.info("💡 업무공지")
             elif tab_choice == "시상안":
-                st.success("🏆 장기인보장 특별 시상 안내")
+                st.success("🏆 시상안")
             else:
                 st.warning("📅 지역단 조회 일정 안내")
             
@@ -287,7 +287,7 @@ def main_page():
         st.markdown("### 📜 최근 질문")
         if "messages" in st.session_state and len(st.session_state.messages) > 0:
             user_questions = [m["content"] for m in st.session_state.messages if m["role"] == "user"]
-            for q in reversed(user_questions[-5:]): # 최근 5개
+            for q in reversed(user_questions[-10:]): # 최근 5개
                 if st.button(f"🔍 {q[:15]}...", key=f"hist_{q}"):
                     st.session_state.temp_prompt = q
         else:
