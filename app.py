@@ -403,27 +403,27 @@ def main_page():
             st.markdown(final_prompt)
 
         with st.chat_message("assistant"):
-            # 1. 시상안 확인 로직 (변수명을 final_prompt로 통일하고 들여쓰기 교정)
-            if any(keyword in final_prompt for keyword in ["시상", "보너스", "프로모션"]):
+            # 1. [시상안 이미지 우선 출력] 질문에 '시상'이 포함되면 즉시 이미지를 띄움
+            if any(k in final_prompt for k in ["시상", "보너스", "프로모션"]):
                 try:
-                    # '시상안' 탭을 엽니다.
+                    # '시상안' 시트를 읽어옵니다.
                     award_sheet = client.open("충호본부데이터베이스").worksheet("시상안")
                     award_data = award_sheet.get_all_records()
                     
                     if award_data:
-                        latest = award_data[-1]  # 가장 최근 데이터
+                        latest = award_data[-1]  # 가장 하단(최신) 행
                         img_url = get_drive_image_url(latest['파일링크'])
                         
-                        # 화면에 시상 이미지를 즉시 출력
+                        # 이미지를 화면에 즉시 띄웁니다 (이게 가장 먼저 나옵니다)
                         st.image(img_url, caption=f"📢 최신 시상 공지: {latest['제목']}")
                         
-                        # AI 답변에 시상안 정보 주입
-                        award_info = f"\n\n[최신 시상안 참고정보]\n제목: {latest['제목']}\n요약내용: {latest.get('핵심내용', '이미지 참조')}"
-                        faq_context += award_info 
+                        # AI에게 줄 컨텍스트에 정보를 추가합니다.
+                        award_context = f"\n\n[최신 시상안 참고정보]\n제목: {latest['제목']}\n요약내용: {latest.get('핵심내용', '이미지 참조')}"
+                        faq_context += award_context
                 except Exception as e:
-                    st.caption(f"(시상안 이미지 로드 참고사항: {e})")
+                    st.caption(f"(시상안 이미지 로드 중 참고사항: {e})")
 
-            # 2. Gemini 답변 생성 및 스트리밍 출력
+            # 2. [AI 답변 생성] 이후 AI가 시상안 정보를 포함해 답변합니다.
             model = get_working_gemini_model()
             if model:
                 try:
@@ -442,18 +442,16 @@ def main_page():
                             placeholder.markdown(full_response + "▌")
                     placeholder.markdown(full_response)
                     
-                    # 세션에 최종 답변 저장
                     st.session_state.messages.append({"role": "assistant", "content": full_response})
                 except Exception as e:
                     st.error(f"답변 생성 중 오류가 발생했습니다: {e}")
-            
-            # ⚠️ 주의: 기존에 있던 get_ai_response(final_prompt) 중복 호출 부분은 삭제해야 합니다.
 
-        # 처리가 완료되면 화면 갱신
+        # 처리가 끝나면 화면을 갱신합니다.
         st.rerun()
+
 # --- 5. 앱 실행 ---
 if __name__ == "__main__":
     if "logged_in" not in st.session_state:
-        login()
+        login_page()
     else:
         main_page()
