@@ -3,6 +3,8 @@ import gspread
 from google.oauth2.service_account import Credentials
 import google.generativeai as genai
 import re
+import PyPDF2  # PDF 분석용
+import io
 st.set_page_config(page_title="충호본부 AI Agent", layout="wide") 
 
 def get_working_gemini_model():
@@ -222,6 +224,20 @@ def get_ai_response(user_query):
                 "• 지침에 없는 경우: 지점 매니저 확인 부탁드립니다."
             )
         return f"⚠️ 서비스 일시 오류 (관리자 문의): {msg}"
+
+def get_drive_image_url(url):
+    """구글 드라이브 공유 링크를 이미지 표시용 직접 링크로 변환"""
+    if 'drive.google.com' in url:
+        try:
+            if 'id=' in url:
+                file_id = url.split('id=')[-1].split('&')[0]
+            else:
+                file_id = url.split('/')[-2]
+            return f'https://drive.google.com/uc?export=view&id={file_id}'
+        except:
+            return url
+    return url
+
 
 
 #메인채팅화면
