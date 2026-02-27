@@ -226,29 +226,65 @@ def get_ai_response(user_query):
 
 #메인채팅화면
 def main_page():
-    # 1. 사이드바 및 레이아웃 설정
+    # 1. 사이드바 및 레이아웃 설정 (CSS 추가 및 수정)
     st.markdown("""
         <style>
-        /* 상단 헤더 제거에 따른 여백 조정 */
-        .block-container { padding-top: 2rem; }
+        /* 상단 헤더 제거 및 여백 */
+        .block-container { padding-top: 1rem; }
         
-        /* 사이드바 스타일 */
+        /* 제미나이 스타일 인사말 디자인 */
+        .gemini-header {
+            padding: 2rem 0 1rem 0;
+            text-align: left;
+            animation: fadeIn 1.2s ease-in-out;
+        }
+        .gemini-title {
+            font-size: 2.5rem;
+            background: linear-gradient(to right, #4285f4, #9b72cb, #d96570);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .gemini-subtitle {
+            font-size: 1.6rem;
+            color: #757575;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 모바일 최적화 폰트 크기 */
+        @media (max-width: 640px) {
+            .gemini-title { font-size: 1.8rem; }
+            .gemini-subtitle { font-size: 1.2rem; }
+        }
+
+        /* 사이드바 및 기타 스타일 유지 */
         [data-testid="stSidebar"] { background-color: #F8F9FA; width: 300px !important; }
-        
-        /* 새 채팅 버튼 스타일 */
         .stButton > button {
             width: 100%; border-radius: 10px; border: 1px solid #ddd;
             background-color: white; color: #333; height: 45px;
             font-weight: bold; margin-bottom: 20px;
         }
-        
-        /* 업무공지 섹션 스타일 */
-        .notice-box {
-            background-color: #ffffff; padding: 10px;
-            border-radius: 8px; border: 1px solid #eee; margin-bottom: 10px;
-        }
         </style>
     """, unsafe_allow_html=True)
+
+    # --- 추가되는 부분 시작 ---
+    user_name = st.session_state.get("user_name", "사용자")
+    
+    # 채팅 메시지가 없을 때만 (첫 접속 시) 제미나이 스타일 인사말 출력
+    if "messages" not in st.session_state or len(st.session_state.messages) == 0:
+        st.markdown(f"""
+            <div class="gemini-header">
+                <div class="gemini-title">안녕하세요, {user_name}님</div>
+                <div class="gemini-subtitle">대전지역단 '애순이'입니다.<br>무엇을 도와드릴까요?</div>
+            </div>
+        """, unsafe_allow_html=True)
+    # --- 추가되는 부분 끝 ---
 
     # 2. 사이드바 구성
     with st.sidebar:
