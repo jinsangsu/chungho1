@@ -386,7 +386,7 @@ def main_page():
             st.markdown(final_prompt)
 
         with st.chat_message("assistant"):
-            with st.spinner("데이터 분석 중..."):
+            with st.spinner("{user name}님 잠시만 기다려주세요..."):
                 answer = get_ai_response(final_prompt)
                 st.markdown(answer)
                 st.session_state.messages.append({"role": "assistant", "content": answer})
