@@ -379,7 +379,7 @@ def main_page():
         else:
             st.caption("질문 내역이 없습니다.")
 
-    # 3. 메인 채팅 영역
+        # 3. 메인 채팅 영역 (370행 부근)
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
@@ -388,10 +388,9 @@ def main_page():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # 4. 입력 처리 (자동 입력 또는 직접 입력)
+    # 4. 입력 처리
     auto_p = st.session_state.get("temp_prompt", None)
     user_p = st.chat_input("궁금한 점을 입력하세요...")
-    
     final_prompt = auto_p if auto_p else user_p
 
     if final_prompt:
@@ -403,30 +402,41 @@ def main_page():
             st.markdown(final_prompt)
 
         with st.chat_message("assistant"):
-            # 1. [시상안 이미지 우선 출력] 질문에 '시상'이 포함되면 즉시 이미지를 띄움
+            # --- [수정 핵심: 변수 초기화] ---
+            faq_context = "" 
+            client = get_gs_client() # 시트 접근을 위한 권한 클라이언트 호출
+
+            # 1. [시상안 이미지 우선 출력]
             if any(k in final_prompt for k in ["시상", "보너스", "프로모션"]):
                 try:
-                    # '시상안' 시트를 읽어옵니다.
-                    award_sheet = client.open("충호본부데이터베이스").worksheet("시상안")
+                    # 관리자님의 실제 시트 주소로 연결
+                    target_url = "https://docs.google.com/spreadsheets/d/1C2tEZ1tGgbhfLw5LsUWrzttByD-zt_CZobg-FVTKyWo/edit"
+                    award_sheet = client.open_by_url(target_url).worksheet("시상안")
                     award_data = award_sheet.get_all_records()
                     
                     if award_data:
-                        latest = award_data[-1]  # 가장 하단(최신) 행
+                        latest = award_data[-1]  # 가장 최근 시상안
                         img_url = get_drive_image_url(latest['파일링크'])
                         
-                        # 이미지를 화면에 즉시 띄웁니다 (이게 가장 먼저 나옵니다)
+                        # AI 답변이 생성되기 전에 이미지를 먼저 띄웁니다.
                         st.image(img_url, caption=f"📢 최신 시상 공지: {latest['제목']}")
                         
-                        # AI에게 줄 컨텍스트에 정보를 추가합니다.
+                        # AI에게 줄 컨텍스트 보강
                         award_context = f"\n\n[최신 시상안 참고정보]\n제목: {latest['제목']}\n요약내용: {latest.get('핵심내용', '이미지 참조')}"
                         faq_context += award_context
                 except Exception as e:
-                    st.caption(f"(시상안 이미지 로드 중 참고사항: {e})")
+                    st.caption(f"(시상안 이미지 로딩 참고: {e})")
 
-            # 2. [AI 답변 생성] 이후 AI가 시상안 정보를 포함해 답변합니다.
+            # 2. [AI 답변 생성]
             model = get_working_gemini_model()
             if model:
                 try:
+                    # 질의응답 시트 데이터도 함께 참조
+                    qa_data = fetch_data_cached("질의응답시트")
+                    top_qa = pick_top_k_qa(final_prompt, qa_data, k=3)
+                    for _, _, q, a in top_qa:
+                        faq_context += f"\nQ: {q}\nA: {a}"
+
                     response = model.generate_content(
                         f"당신은 보험 전문가입니다. 다음 정보를 바탕으로 답변하세요.\n\n"
                         f"[참고 정보]: {faq_context}\n\n"
@@ -444,14 +454,14 @@ def main_page():
                     
                     st.session_state.messages.append({"role": "assistant", "content": full_response})
                 except Exception as e:
-                    st.error(f"답변 생성 중 오류가 발생했습니다: {e}")
+                    st.error(f"답변 생성 오류: {e}")
 
-        # 처리가 끝나면 화면을 갱신합니다.
+        # 모든 처리가 완료되면 화면 갱신
         st.rerun()
 
 # --- 5. 앱 실행 ---
 if __name__ == "__main__":
     if "logged_in" not in st.session_state:
-        login_page()
+        login() # login_page() 대신 정의된 login() 함수 호출
     else:
         main_page()
