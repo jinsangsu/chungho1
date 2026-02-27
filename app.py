@@ -275,26 +275,34 @@ def main_page():
       border-radius: 32px !important;
       background: #ffffff !important;
       box-shadow: 0 12px 32px rgba(255, 204, 0, 0.15) !important;
+      
+      /* 하단바 가림 방지: 바닥에서 띄우기 */
+      bottom: 30px !important; 
+      
+      /* 좌우 테두리 잘림 방지: 너비를 줄이고 중앙 배치 */
+      width: calc(100% - 40px) !important;
+      left: 20px !important;
+      margin: 0 auto !important;
     }
 
-    /* 입력 중일 때 강조 */
-    div[data-testid="stChatInput"]:focus-within {
-      border: 2px solid var(--kb-yellow-dark) !important;
-      box-shadow: 0 6px 18px rgba(255, 204, 0, 0.25) !important;
-    }
-
-    /* 내부 입력 영역 테두리 제거 */
+    /* 입력창 내부 요소 테두리 간섭 제거 */
     div[data-testid="stChatInput"] > div {
       border: none !important;
+      background: transparent !important;
     }
 
-    /* 커서 색상 및 텍스트 설정 */
-    textarea {
-      caret-color: var(--kb-yellow);
+    /* 채팅 내용이 입력창에 가려지지 않게 하단 여백 추가 */
+    .main .block-container {
+      padding-bottom: 150px !important;
     }
 
-    /* 모바일 반응형 폰트 조절 */
+    /* 모바일 반응형 폰트 및 여백 조절 */
     @media (max-width: 768px) {
+      div[data-testid="stChatInput"] {
+        bottom: 20px !important; /* 모바일은 조금 더 내림 */
+        width: calc(100% - 20px) !important;
+        left: 10px !important;
+      }
       .gemini-title { font-size: 32px; }
       .gemini-subtitle { font-size: 36px; }
       .gemini-container { margin-top: 30px; }
