@@ -228,10 +228,9 @@ def get_ai_response(user_query):
 def main_page():
     user_name = st.session_state.get("user_name", "사용자") 
 
-    # 1. KB 테마 및 제미나이 스타일 통합 CSS
     st.markdown("""
     <style>
-    /* ===== KB Theme & Base Setup ===== */
+    /* (기존 root 및 base 설정 유지) */
     :root {
       --kb-yellow: #FFCC00;
       --kb-yellow-dark: #E6B800;
@@ -241,63 +240,45 @@ def main_page():
       --radius: 22px;
     }
 
-    /* 전체 배경 설정 */
     .stApp { background: var(--bg); }
 
-    /* 중앙 컨테이너 (상단 문구 영역) */
-    .gemini-container {
-      max-width: 980px;
-      margin: 60px auto 0 auto;
-      padding: 0 18px;
-      font-family: 'Pretendard', sans-serif;
-    }
-
-    /* 상단 첫 줄 (인사) */
-    .gemini-title {
-      font-size: 36px;
-      font-weight: 700;
-      color: var(--kb-dark);
-      margin-bottom: 6px;
-    }
-
-    /* 상단 두 번째 줄 (메인 질문) */
-    .gemini-subtitle {
-      font-size: 52px;
-      font-weight: 800;
-      color: var(--kb-yellow);
-      margin-bottom: 60px;
-    }
-
-    /* ===== Chat Input KB Style (모바일 최적화) ===== */
-    /* 입력창 테두리 및 그림자 */
+    /* ===== [핵심 수정] 입력창 위치 및 테두리 설정 ===== */
     div[data-testid="stChatInput"] {
       border: 2px solid var(--kb-yellow) !important;
-      border-radius: 32px !important;
+      border-radius: 20px !important;
       background: #ffffff !important;
-      box-shadow: 0 12px 32px rgba(255, 204, 0, 0.15) !important;
+      box-shadow: 0 8px 24px rgba(255, 204, 0, 0.2) !important;
+      
+      /* 하단 가림 방지를 위한 하단 여백 추가 */
+      bottom: 20px !important; 
+      margin-bottom: 10px !important;
+      
+      /* 좌우 여백을 주어 테두리가 화면 끝에 붙지 않게 함 */
+      width: calc(100% - 40px) !important;
+      left: 20px !important;
+      right: 20px !important;
     }
 
-    /* 입력 중일 때 강조 */
-    div[data-testid="stChatInput"]:focus-within {
-      border: 2px solid var(--kb-yellow-dark) !important;
-      box-shadow: 0 6px 18px rgba(255, 204, 0, 0.25) !important;
-    }
-
-    /* 내부 입력 영역 테두리 제거 */
-    div[data-testid="stChatInput"] > div {
-      border: none !important;
-    }
-
-    /* 커서 색상 및 텍스트 설정 */
-    textarea {
+    /* 입력창 내부의 텍스트 영역 여백 조절 */
+    div[data-testid="stChatInput"] textarea {
+      padding: 12px !important;
       caret-color: var(--kb-yellow);
     }
 
-    /* 모바일 반응형 폰트 조절 */
+    /* 모바일에서 채팅 메시지가 입력창에 가려지지 않도록 메인 컨테이너 하단 여백 확보 */
+    .main .block-container {
+      padding-bottom: 150px !important;
+    }
+
+    /* 모바일 반응형 추가 수정 */
     @media (max-width: 768px) {
-      .gemini-title { font-size: 32px; }
-      .gemini-subtitle { font-size: 36px; }
-      .gemini-container { margin-top: 30px; }
+      div[data-testid="stChatInput"] {
+        bottom: 15px !important; /* 모바일 하단바 고려 */
+        width: calc(100% - 20px) !important;
+        left: 10px !important;
+      }
+      .gemini-title { font-size: 28px; }
+      .gemini-subtitle { font-size: 32px; }
     }
     </style>
     """, unsafe_allow_html=True)
