@@ -92,19 +92,26 @@ def login():
     st.title("🛡️ 충호본부 스마트 AI 비서")
     st.write("사번으로 로그인하여 서비스를 시작하세요.")
 
-    emp_id = st.text_input("사번(ID) 입력", placeholder="사번을 입력하세요", type="password")
-    
-    if st.button("로그인", use_container_width=True):
-        member_list = fetch_data_cached("사원명부")
-        # 사번 매칭 (사번이 숫자로 인식될 수 있어 str로 변환 대조)
-        user = next((row for row in member_list if str(row.get('사번')) == emp_id), None)
+    # st.form을 사용하면 엔터키로 제출(Submit)이 가능합니다.
+    with st.form("login_form", clear_on_submit=False):
+        emp_id = st.text_input("사번(ID) 입력", placeholder="사번을 입력하세요", type="password")
+        submit_button = st.form_submit_button("로그인", use_container_width=True)
         
-        if user:
-            st.session_state["logged_in"] = True
-            st.session_state["user_name"] = user.get("이름", "사용자")
-            st.rerun()
-        else:
-            st.error("일치하는 사번이 없습니다. 시트의 사번을 확인해 주세요.")
+        if submit_button:
+            if not emp_id:
+                st.error("사번을 입력해 주세요.")
+                return
+
+            member_list = fetch_data_cached("사원명부")
+            user = next((row for row in member_list if str(row.get('사번')) == emp_id), None)
+            
+            if user:
+                # 로그인 상태 저장
+                st.session_state["logged_in"] = True
+                st.session_state["user_name"] = user.get("이름", "사용자")
+                st.rerun()
+            else:
+                st.error("일치하는 사번이 없습니다. 시트의 사번을 확인해 주세요.")
 
 #Top-k 뽑는 함수 2개 추가
 def normalize_tokens(text: str) -> set:
@@ -218,70 +225,103 @@ def get_ai_response(user_query):
 
 
 #메인채팅화면
-#메인채팅화면
 def main_page():
-    # 1. 사이드바 구성: 로그아웃 제거 및 최근 질문 목록 추가
-    with st.sidebar:
-        st.markdown("### 📜 최근 질문 목록")
-        if "messages" in st.session_state and len(st.session_state.messages) > 0:
-            # 질문만 추출 (최신순 10개)
-            user_questions = [m["content"] for m in st.session_state.messages if m["role"] == "user"]
-            for q in reversed(user_questions[-10:]):
-                st.info(f"Q: {q}")
-        else:
-            st.caption("아직 질문 내역이 없습니다.")
-            
-    # 2. 메인 화면 UI 최적화 (업무지침 버튼 삭제 및 헤더 유지)
+    # 1. 사이드바 및 레이아웃 설정
     st.markdown("""
         <style>
-        .stApp { background-color: #F8F9FA; }
-        .main-header {
-            background: linear-gradient(90deg, #072e6e 0%, #0047AB 100%);
-            padding: 25px 20px;
-            border-radius: 0 0 20px 20px;
-            color: white;
-            text-align: center;
-            margin: -60px -20px 20px -20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        /* 상단 헤더 제거에 따른 여백 조정 */
+        .block-container { padding-top: 2rem; }
+        
+        /* 사이드바 스타일 */
+        [data-testid="stSidebar"] { background-color: #F8F9FA; width: 300px !important; }
+        
+        /* 새 채팅 버튼 스타일 */
+        .stButton > button {
+            width: 100%; border-radius: 10px; border: 1px solid #ddd;
+            background-color: white; color: #333; height: 45px;
+            font-weight: bold; margin-bottom: 20px;
         }
-        /* 입력창 위치 고정 */
-        .stChatInput {
-            bottom: 30px !important;
+        
+        /* 업무공지 섹션 스타일 */
+        .notice-box {
+            background-color: #ffffff; padding: 10px;
+            border-radius: 8px; border: 1px solid #eee; margin-bottom: 10px;
         }
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown(f"""
-        <div class="main-header">
-            <h2 style='margin:0;'>🏛️ 충청호남본부 AI</h2>
-            <p style='margin:5px 0 0 0; opacity:0.8;'>{st.session_state['user_name']}님, 무엇을 도와드릴까요?</p>
-        </div>
-    """, unsafe_allow_html=True)
+    # 2. 사이드바 구성
+    with st.sidebar:
+        # (1) 새 채팅 버튼
+        if st.button("➕ 새 채팅"):
+            st.session_state.messages = []
+            st.rerun()
 
-    # 3. 채팅 내역 표시
+        st.divider()
+
+        # (2) 지역단 업무공지 (아코디언 활용)
+        st.markdown("### 📢 지역단 정보")
+        with st.expander("📌 최신 지역단 업무공지", expanded=False):
+            # 클릭 시 세부 항목 표시
+            tab_choice = st.radio(
+                "항목 선택",
+                ["주요 업무공지", "시상안", "지역단 주요 사항"],
+                key="notice_tab"
+            )
+            
+            # 선택한 항목에 따른 시트 데이터 필터링 또는 고정 안내
+            if tab_choice == "주요 업무공지":
+                st.info("💡 2월 마감 지침 전달 건")
+            elif tab_choice == "시상안":
+                st.success("🏆 장기인보장 특별 시상 안내")
+            else:
+                st.warning("📅 지역단 조회 일정 안내")
+            
+            # '적용' 버튼 클릭 시 채팅창에 해당 내용 요약 요청 자동 입력
+            if st.button(f"{tab_choice} 내용 요약보기"):
+                st.session_state.temp_prompt = f"현재 등록된 '{tab_choice}'의 핵심 내용을 요약해서 알려줘."
+
+        st.divider()
+
+        # (3) 최근 질문 목록
+        st.markdown("### 📜 최근 질문")
+        if "messages" in st.session_state and len(st.session_state.messages) > 0:
+            user_questions = [m["content"] for m in st.session_state.messages if m["role"] == "user"]
+            for q in reversed(user_questions[-5:]): # 최근 5개
+                if st.button(f"🔍 {q[:15]}...", key=f"hist_{q}"):
+                    st.session_state.temp_prompt = q
+        else:
+            st.caption("질문 내역이 없습니다.")
+
+    # 3. 메인 채팅 영역
     if "messages" not in st.session_state:
         st.session_state.messages = []
-    
-    # 컨테이너를 사용하여 채팅 내역이 위로 쌓이게 함
+
+    # 채팅 메시지 출력
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # 4. 채팅 입력 및 로직 (버튼 로직 삭제됨)
-    if prompt := st.chat_input("업무 지침이나 궁금한 점을 입력하세요"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
+    # 4. 입력 처리 (자동 입력 또는 직접 입력)
+    auto_p = st.session_state.get("temp_prompt", None)
+    user_p = st.chat_input("궁금한 점을 입력하세요...")
+    
+    final_prompt = auto_p if auto_p else user_p
+
+    if final_prompt:
+        if "temp_prompt" in st.session_state:
+            del st.session_state.temp_prompt
+            
+        st.session_state.messages.append({"role": "user", "content": final_prompt})
         with st.chat_message("user"):
-            st.markdown(prompt)
+            st.markdown(final_prompt)
 
         with st.chat_message("assistant"):
-            with st.spinner("지침을 분석 중입니다..."):
-                answer = get_ai_response(prompt)
+            with st.spinner("데이터 분석 중..."):
+                answer = get_ai_response(final_prompt)
                 st.markdown(answer)
                 st.session_state.messages.append({"role": "assistant", "content": answer})
-        
-        # 질문 후 사이드바 업데이트를 위해 화면 갱신
         st.rerun()
-
 # --- 5. 앱 실행 ---
 if __name__ == "__main__":
     if "logged_in" not in st.session_state:
