@@ -3,7 +3,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import google.generativeai as genai
 import re
-st.set_page_config(page_title="충호본부 AI Assistant", layout="wide") 
+st.set_page_config(page_title="충호본부 AI Agent", layout="wide") 
 
 def get_working_gemini_model():
     genai.configure(api_key=st.secrets["gemini_api_key"])
@@ -189,7 +189,7 @@ def get_ai_response(user_query):
 
     # 6) 프롬프트 작성
     prompt = f"""
-당신은 KB손해보험 충청호남본부의 '충호 Assistant'입니다.
+당신은 KB손해보험 충청호남본부의 '충호 Agent'입니다.
 {user_name}님에게 친절하고 든든한 파트너가 되어주세요.
 
 [답변 원칙]
