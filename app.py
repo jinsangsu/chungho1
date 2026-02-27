@@ -7,6 +7,7 @@ import PyPDF2  # PDF 분석용
 import io
 st.set_page_config(page_title="충호본부 AI Agent", layout="wide") 
 
+@st.cache_resource
 def get_working_gemini_model():
     genai.configure(api_key=st.secrets["gemini_api_key"])
 
@@ -23,8 +24,7 @@ def get_working_gemini_model():
     for name in candidates:
         try:
             m = genai.GenerativeModel(name)
-            # 아주 짧게 호출해 모델 유효성 확인
-            _ = m.generate_content("ping")
+            
             return m
         except Exception:
             pass
@@ -150,7 +150,7 @@ def pick_top_k_qa(user_query: str, qa_data: list, k: int = 5):
 
 
 # --- 3. AI 답변 생성 ---
-def get_ai_response(user_query):
+def get_ai_response(user_query, extra_context: str = ""):
     user_name = st.session_state.get("user_name", "사용자")
 
     # 1) 시트 데이터 조회
@@ -200,6 +200,9 @@ def get_ai_response(user_query):
 2. 데이터에 없는 경우 "{user_name}님, 현재 등록되지 않은 지침입니다. 지점 매니저에게 확인 부탁드립니다."라고 안내하세요.
 3. 답변은 모바일에서 읽기 쉽게 불렛(•)으로 정리하세요.
 
+[추가 참고 정보]
+{extra_context}
+
 [지침 데이터]
 {context}
 
@@ -207,7 +210,7 @@ def get_ai_response(user_query):
 """
 
     try:
-        genai.configure(api_key=st.secrets["gemini_api_key"])
+        
         model = get_working_gemini_model()
         response = model.generate_content(prompt)
 
@@ -425,7 +428,7 @@ def main_page():
 
             # 3. [AI 답변 생성] (get_ai_response로 통일)
             try:
-                ai_answer = get_ai_response(final_prompt)
+                ai_answer = get_ai_response(final_prompt, extra_context=faq_context)
                 st.markdown(ai_answer)
                 st.session_state.messages.append({"role": "assistant", "content": ai_answer})
             except Exception as e:
