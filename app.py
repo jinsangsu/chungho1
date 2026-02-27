@@ -254,7 +254,7 @@ def main_page():
 
     /* 상단 첫 줄 (인사) */
     .gemini-title {
-      font-size: 48px;
+      font-size: 36px;
       font-weight: 700;
       color: var(--kb-dark);
       margin-bottom: 6px;
