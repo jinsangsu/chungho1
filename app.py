@@ -402,31 +402,53 @@ def main_page():
             st.markdown(final_prompt)
 
         with st.chat_message("assistant"):
-            # --- [추가] 시상안 자동 감지 및 이미지 분석 로직 ---
-            # --- [추가] 시상안 자동 감지 및 이미지 분석 로직 ---
-            if any(keyword in prompt for keyword in ["시상", "보너스", "프로모션"]):
-            try:
-                # 1. '시상안' 탭을 엽니다.
-                award_sheet = client.open("충호본부데이터베이스").worksheet("시상안")
-                award_data = award_sheet.get_all_records()
-                
-                if award_data:
-                    latest = award_data[-1]  # 가장 최근(마지막 행) 데이터
-                    img_url = get_drive_image_url(latest['파일링크'])
+            # 1. 시상안 확인 로직 (변수명을 final_prompt로 통일하고 들여쓰기 교정)
+            if any(keyword in final_prompt for keyword in ["시상", "보너스", "프로모션"]):
+                try:
+                    # '시상안' 탭을 엽니다.
+                    award_sheet = client.open("충호본부데이터베이스").worksheet("시상안")
+                    award_data = award_sheet.get_all_records()
                     
-                    # 2. 설계사 화면에 시상 이미지를 즉시 출력합니다.
-                    st.image(img_url, caption=f"📢 최신 시상 공지: {latest['제목']}")
-                    
-                    # 3. AI 답변에 시상안 정보를 주입합니다.
-                    award_info = f"\n\n[최신 시상안 참고정보]\n제목: {latest['제목']}\n요약내용: {latest.get('핵심내용', '이미지 참조')}"
-                    faq_context += award_info 
-            except Exception as e:
-                st.error(f"시상안 데이터를 불러오지 못했습니다: {e}")
+                    if award_data:
+                        latest = award_data[-1]  # 가장 최근 데이터
+                        img_url = get_drive_image_url(latest['파일링크'])
+                        
+                        # 화면에 시상 이미지를 즉시 출력
+                        st.image(img_url, caption=f"📢 최신 시상 공지: {latest['제목']}")
+                        
+                        # AI 답변에 시상안 정보 주입
+                        award_info = f"\n\n[최신 시상안 참고정보]\n제목: {latest['제목']}\n요약내용: {latest.get('핵심내용', '이미지 참조')}"
+                        faq_context += award_info 
+                except Exception as e:
+                    st.caption(f"(시상안 이미지 로드 참고사항: {e})")
 
-            with st.spinner("잠시만 기다려주세요..."):
-                answer = get_ai_response(final_prompt)
-                st.markdown(answer)
-                st.session_state.messages.append({"role": "assistant", "content": answer})
+            # 2. Gemini 답변 생성 및 스트리밍 출력
+            model = get_working_gemini_model()
+            if model:
+                try:
+                    response = model.generate_content(
+                        f"당신은 보험 전문가입니다. 다음 정보를 바탕으로 답변하세요.\n\n"
+                        f"[참고 정보]: {faq_context}\n\n"
+                        f"[사용자 질문]: {final_prompt}",
+                        stream=True
+                    )
+                    
+                    full_response = ""
+                    placeholder = st.empty()
+                    for chunk in response:
+                        if chunk.text:
+                            full_response += chunk.text
+                            placeholder.markdown(full_response + "▌")
+                    placeholder.markdown(full_response)
+                    
+                    # 세션에 최종 답변 저장
+                    st.session_state.messages.append({"role": "assistant", "content": full_response})
+                except Exception as e:
+                    st.error(f"답변 생성 중 오류가 발생했습니다: {e}")
+            
+            # ⚠️ 주의: 기존에 있던 get_ai_response(final_prompt) 중복 호출 부분은 삭제해야 합니다.
+
+        # 처리가 완료되면 화면 갱신
         st.rerun()
 # --- 5. 앱 실행 ---
 if __name__ == "__main__":
