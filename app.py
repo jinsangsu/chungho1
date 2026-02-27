@@ -226,79 +226,82 @@ def get_ai_response(user_query):
 
 #메인채팅화면
 def main_page():
-    user_name = st.session_state.get("user_name", "사장님") # 로그인한 사용자 이름 가져오기
+    user_name = st.session_state.get("user_name", "사용자") 
 
-    # 1. 제미나이 스타일 전용 CSS 및 입력창 그라데이션 설정
+    # 1. 제미나이 스타일 전용 CSS 및 애니메이션 설정
     st.markdown(f"""
         <style>
-        /* 기본 배경 및 폰트 설정 */
+        /* 배경 설정 */
         .stApp {{
             background-color: #ffffff;
         }}
         
-        /* 제미나이 스타일 메인 헤더 */
+        /* 제미나이 스타일 메인 헤더 컨테이너 */
         .gemini-container {{
             display: flex;
             flex-direction: column;
             align-items: flex-start;
-            padding: 100px 10% 20px 10%; /* 중앙 집중형 레이아웃 */
+            padding: 80px 10% 40px 10%;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
         }}
+
+        /* "안녕하세요, 00님" - 그라데이션 텍스트 */
         .gemini-title {{
-            font-size: 3.5rem;
-            font-weight: 700;
-            background: linear-gradient(90deg, #4285f4, #9b72cb, #d96570);
+            font-size: 56px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            background: linear-gradient(74deg, #4285f4 0%, #9b72cb 9%, #d96570 20%, #4285f4 40%);
+            background-size: 400% 100%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            margin-bottom: 0px;
             line-height: 1.2;
-            margin-bottom: 10px;
+            animation: move-gradient 8s linear infinite;
         }}
+
+        /* "무엇을 도와드릴까요?" - 흐릿한 회색 텍스트 */
         .gemini-subtitle {{
-            font-size: 2.5rem;
-            color: #c4c7c5;
+            font-size: 56px;
             font-weight: 600;
+            color: #e3e3e3; /* 제미나이 특유의 연한 회색 */
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+            margin-top: -5px;
         }}
 
-        /* 입력창(chat_input) 주변 무지개 그라데이션 효과 */
-        div[data-testid="stChatInput"] {{
-            border-radius: 32px !important;
-            padding: 3px !important; /* 그라데이션 두께 */
-            background: linear-gradient(110deg, #4285f4, #9b72cb, #d96570, #4285f4) !important;
-            background-size: 200% 200% !important;
-            animation: gradient-move 4s linear infinite !important;
-            bottom: 30px !important; /* 하단 여백 */
-        }}
-
-        @keyframes gradient-move {{
-            0% {{ background-position: 0% 50%; }}
-            50% {{ background-position: 100% 50%; }}
+        @keyframes move-gradient {{
+            0% {{ background-position: 100% 50%; }}
             100% {{ background-position: 0% 50%; }}
         }}
 
-        /* 입력바 내부 흰색 배경 유지 */
-        div[data-testid="stChatInput"] > div {{
-            background-color: white !important;
-            border-radius: 30px !important;
-            border: none !important;
+        /* 채팅 입력창 그라데이션 보더 효과 */
+        div[data-testid="stChatInput"] {{
+            border: 1.5px solid #e3e3e3 !important;
+            border-radius: 32px !important;
+            background: white !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         }}
         
-        /* 모바일 대응 폰트 조절 */
+        /* 모바일 대응 (반응형) */
         @media (max-width: 768px) {{
-            .gemini-title {{ font-size: 2.2rem; }}
-            .gemini-subtitle {{ font-size: 1.8rem; }}
-            .gemini-container {{ padding: 60px 5% 20px 5%; }}
+            .gemini-title, .gemini-subtitle {{
+                font-size: 32px;
+            }}
+            .gemini-container {{
+                padding: 40px 5% 20px 5%;
+            }}
         }}
         </style>
     """, unsafe_allow_html=True)
 
-    # 2. 메인 페이지 인삿말 구성 (메시지가 없을 때만 표시)
+    # 2. 메인 페이지 인삿말 (메시지가 없을 때만 표시)
     if "messages" not in st.session_state or len(st.session_state.messages) == 0:
         st.markdown(f"""
             <div class="gemini-container">
                 <div class="gemini-title">안녕하세요, {user_name}님</div>
-                <div class="gemini-subtitle">어떤 도움이 필요하신가요?</div>
+                <div class="gemini-subtitle">무엇을 도와드릴까요?</div>
             </div>
         """, unsafe_allow_html=True)
-
     # --- (이하 기존 사이드바 및 채팅 로직 유지) ---
 
     # 2. 사이드바 구성
